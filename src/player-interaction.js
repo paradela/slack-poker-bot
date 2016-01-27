@@ -13,9 +13,18 @@ class PlayerInteraction {
   //
   // Returns an {Observable} that will `onNext` for each player that joins and
   // `onCompleted` when time expires or the max number of players join.
-  static pollPotentialPlayers(messages, channel, scheduler=rx.Scheduler.timeout, timeout=30, maxPlayers=10) {
-    let formatMessage = t => `Who wants to play? Respond with 'yes' in this channel in the next ${t} seconds.`;
-    let timeExpired = PlayerInteraction.postMessageWithTimeout(channel, formatMessage, scheduler, timeout);
+  static pollPotentialPlayers(game, messages, channel, scheduler=rx.Scheduler.timeout, timeout=30, maxPlayers=10) {
+    switch(game) {
+      case 'poker':
+        break;
+      case 'exploding_kittens':
+        break;
+      default:
+        break;
+    }
+    let formatMessage = (g, t) => {`Who wants to play ${g}? Respond with 'yes' in this channel in the next ${t} seconds.`};
+    let gameName = (game == 'poker') ? 'Texas Holdem Poker' : 'Exploding Kittens';
+    let timeExpired = PlayerInteraction.postMessageWithTimeout(gameName, channel, formatMessage, scheduler, timeout);
 
     // Look for messages containing the word 'yes' and map them to a unique
     // user ID, constrained to `maxPlayers` number of players.
@@ -94,8 +103,8 @@ class PlayerInteraction {
   // timeout - The duration of the message, in seconds
   //
   // Returns an {Observable} sequence that signals expiration of the message
-  static postMessageWithTimeout(channel, formatMessage, scheduler, timeout) {
-    let timeoutMessage = channel.send(formatMessage(timeout));
+  static postMessageWithTimeout(gameName, channel, formatMessage, scheduler, timeout) {
+    let timeoutMessage = channel.send(formatMessage(gameName, timeout));
 
     let timeExpired = rx.Observable.timer(0, 1000, scheduler)
       .take(timeout + 1)

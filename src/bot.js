@@ -45,6 +45,7 @@ class Bot {
         
     disp.add(this.handleDealGameMessages(messages, atMentions));
     disp.add(this.handleConfigMessages(atMentions));
+    disp.add(this.handleExplodeGameMessages(messages, atMention));
     
     return disp;
   }
@@ -69,10 +70,36 @@ class Bot {
         }
         return true;
       })
-      .flatMap(channel => this.pollPlayersForGame(messages, channel))
+      .flatMap(channel => this.pollPlayersForGame('poker', messages, channel))
       .subscribe();
   }
-  
+
+
+  // Private: Looks for messages directed at the bot that contain the work
+  // "explode". When found, start polling players for a Exploding Kittens Game.
+  //
+  // messages - An {Observable} representing messages posted to a channel
+  // atMentions - An {Observable} representing messages directed at the bot
+  //
+  // Returns a {Disposable} that will end this subscription
+  handleExplodeGameMessages(messages, atMention) {
+      return atMentions
+      .where(e => e.text && e.text.toLowerCase().match(/\bexplode\b/))
+      .map(e => this.slack.getChannelGroupOrDMByID(e.channel))
+      .where(channel => {
+        if (this.isPolling) {
+          return false;
+        } else if (this.isGameRunning) {
+          channel.send('Another game is in progress, quit that first.');
+          return false;
+        }
+        return true;
+      })
+      .flatMap(channel => this.pollPlayersForGame('exploding_kittens', messages, channel))
+      .subscribe();
+  }
+
+
   // Private: Looks for messages directed at the bot that contain the word
   // "config" and have valid parameters. When found, set the parameter.
   //
@@ -101,10 +128,10 @@ class Bot {
   // channel - The channel where the deal message was posted
   //
   // Returns an {Observable} that signals completion of the game 
-  pollPlayersForGame(messages, channel) {
+  pollPlayersForGame(game, messages, channel) {
     this.isPolling = true;
 
-    return PlayerInteraction.pollPotentialPlayers(messages, channel)
+    return PlayerInteraction.pollPotentialPlayers(game, messages, channel)
       .reduce((players, id) => {
         let user = this.slack.getUserByID(id);
         channel.send(`${user.name} has joined the game.`);
@@ -117,7 +144,7 @@ class Bot {
         this.addBotPlayers(players);
         
         let messagesInChannel = messages.where(e => e.channel === channel.id);
-        return this.startGame(messagesInChannel, channel, players);
+        return this.startGame(game, messagesInChannel, channel, players);
       });
   }
 
@@ -128,7 +155,7 @@ class Bot {
   // players - The players participating in the game
   //
   // Returns an {Observable} that signals completion of the game 
-  startGame(messages, channel, players) {
+  startGame(gameType, messages, channel, players) {
     if (players.length <= 1) {
       channel.send('Not enough players for a game, try again later.');
       return rx.Observable.return(null);
@@ -137,7 +164,15 @@ class Bot {
     channel.send(`We've got ${players.length} players, let's start the game.`);
     this.isGameRunning = true;
     
-    let game = new TexasHoldem(this.slack, messages, channel, players);
+    var game;
+    switch(gameType) {
+      case 'poker':
+        game = new TexasHoldem(this.slack, messages, channel, players);
+        break;
+      case 'exploding_kittens':
+        game = new ExplodingKittens(this.slack, messages, channel, players);
+        break;
+    }
     _.extend(game, this.gameConfig);
 
     // Listen for messages directed at the bot containing 'quit game.'
