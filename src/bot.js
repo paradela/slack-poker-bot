@@ -45,7 +45,7 @@ class Bot {
         
     disp.add(this.handleDealGameMessages(messages, atMentions));
     disp.add(this.handleConfigMessages(atMentions));
-    disp.add(this.handleExplodeGameMessages(messages, atMention));
+    disp.add(this.handleExplodeGameMessages(messages, atMentions));
     
     return disp;
   }
@@ -82,7 +82,7 @@ class Bot {
   // atMentions - An {Observable} representing messages directed at the bot
   //
   // Returns a {Disposable} that will end this subscription
-  handleExplodeGameMessages(messages, atMention) {
+  handleExplodeGameMessages(messages, atMentions) {
       return atMentions
       .where(e => e.text && e.text.toLowerCase().match(/\bexplode\b/))
       .map(e => this.slack.getChannelGroupOrDMByID(e.channel))
