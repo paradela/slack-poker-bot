@@ -45,7 +45,7 @@ class Bot {
         
     disp.add(this.handleDealGameMessages(messages, atMentions));
     disp.add(this.handleConfigMessages(atMentions));
-    disp.add(this.handleExplodeGameMessages(messages, atMentions));
+    //disp.add(this.handleExplodeGameMessages(messages, atMentions));
     
     return disp;
   }
@@ -62,6 +62,7 @@ class Bot {
       .where(e => e.text && e.text.toLowerCase().match(/\bdeal\b/))
       .map(e => this.slack.getChannelGroupOrDMByID(e.channel))
       .where(channel => {
+        channel.send('Whos messing up with me??');
         if (this.isPolling) {
           return false;
         } else if (this.isGameRunning) {
